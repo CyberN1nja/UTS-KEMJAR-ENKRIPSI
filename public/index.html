@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShopX - E-Commerce Elektronik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <div class="max-w-4xl mx-auto p-6 space-y-8">
+      <!-- Header -->
+      <h1 class="text-3xl font-bold text-center text-blue-700">ShopX - E-Commerce Elektronik</h1>
+
+      <!-- Informasi Pribadi -->
+      <section class="bg-white p-6 rounded-2xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Informasi Pribadi</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Nama Lengkap" class="border rounded px-4 py-2 w-full" />
+          <input type="text" placeholder="Nomor Telepon" class="border rounded px-4 py-2 w-full" />
+          <input type="text" placeholder="Alamat Lengkap" class="border rounded px-4 py-2 w-full md:col-span-2" />
+        </div>
+      </section>
+
+      <!-- Pembayaran -->
+      <section class="bg-white p-6 rounded-2xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Pembayaran</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Nomor Kartu Kredit" class="border rounded px-4 py-2 w-full" />
+          <input type="text" placeholder="CVV" class="border rounded px-4 py-2 w-full" />
+          <input type="text" placeholder="Nama Pemilik Kartu" class="border rounded px-4 py-2 w-full md:col-span-2" />
+        </div>
+      </section>
+
+      <!-- Tombol Kirim -->
+      <div class="text-center">
+        <button id="submitBtn" class="bg-blue-600 text-white px-4 py-2 rounded mt-6">Kirim Data</button>
+      </div>
+
+      <!-- Riwayat Pembelian -->
+      <section class="bg-white p-6 rounded-2xl shadow">
+        <h2 class="text-xl font-semibold mb-4">Riwayat Pembelian</h2>
+        <ul class="space-y-2">
+          <li class="border-b pb-2"><strong>Smartphone ABC</strong> – Rp 3.500.000 (10 April 2024)</li>
+          <li class="border-b pb-2"><strong>Headset Bluetooth</strong> – Rp 750.000 (28 Maret 2024)</li>
+        </ul>
+      </section>
+    </div>
+
+    <script>
+      document.getElementById('submitBtn').addEventListener('click', () => {
+        const data = {
+          nama: document.querySelector('input[placeholder="Nama Lengkap"]').value,
+          telepon: document.querySelector('input[placeholder="Nomor Telepon"]').value,
+          alamat: document.querySelector('input[placeholder="Alamat Lengkap"]').value,
+          kartu: document.querySelector('input[placeholder="Nomor Kartu Kredit"]').value,
+          cvv: document.querySelector('input[placeholder="CVV"]').value,
+          pemilik: document.querySelector('input[placeholder="Nama Pemilik Kartu"]').value,
+        };
+
+        fetch('/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+          .then((res) => res.json())
+          .then((res) => alert(res.message))
+          .catch((err) => alert('Terjadi kesalahan: ' + err));
+      });
+    </script>
+  </body>
+</html>
