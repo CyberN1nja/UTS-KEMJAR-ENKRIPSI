@@ -49,6 +49,18 @@ app.post('/submit', (req, res) => {
   });
 });
 
+// Endpoint untuk mengambil riwayat data dari database
+app.get('/getData', (req, res) => {
+  const query = 'SELECT * FROM pengguna ORDER BY timestamp DESC'; // Menampilkan data berdasarkan waktu terakhir
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Gagal mengambil data:', err);
+      return res.status(500).json({ message: 'Gagal mengambil data.' });
+    }
+    res.json({ data: results });
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server ShopX berjalan di http://localhost:${PORT}`);
