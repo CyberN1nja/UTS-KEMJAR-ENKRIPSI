@@ -2,8 +2,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const mysql = require('mysql2'); // Import mysql2
+const dotenv = require('dotenv');
+const CryptoService = require('./lib/CryptoService');
 const app = express();
 const PORT = 3000;
+
+// Load environment variables
+dotenv.config();
+
+// Initialize encryption service
+const cryptoService = new CryptoService();
 
 // Middleware
 app.use(bodyParser.json());
@@ -15,47 +23,83 @@ const db = mysql.createConnection({
   host: 'localhost', // Menghubungkan ke MySQL di localhost
   user: 'root', // Default user di XAMPP adalah 'root'
   password: '', // Biasanya kosong pada XAMPP
-  database: 'shopx', // Nama database yang kamu buat di phpMyAdmin
+  database: 'uts2keamananjaringanaa', // Nama database yang kamu buat di phpMyAdmin
 });
 
+// Periksa dan ubah struktur tabel jika diperlukan
 db.connect((err) => {
   if (err) {
     console.error('Gagal terhubung ke database:', err);
     return;
   }
   console.log('Terhubung ke database MySQL');
+  
+  // Ubah struktur tabel untuk menangani data terenkripsi yang lebih besar
+  const alterTableQuery = `
+    ALTER TABLE pengguna 
+    MODIFY alamat TEXT NOT NULL,
+    MODIFY kartu TEXT NOT NULL, 
+    MODIFY cvv TEXT NOT NULL, 
+    MODIFY pemilik TEXT NOT NULL;
+  `;
+  
+  db.query(alterTableQuery, (alterErr) => {
+    if (alterErr) {
+      console.error('Gagal mengubah struktur tabel:', alterErr);
+      console.log('Aplikasi tetap berjalan, tapi mungkin akan ada masalah saat menyimpan data terenkripsi.');
+    } else {
+      console.log('Struktur tabel berhasil diperbarui untuk menangani data terenkripsi');
+    }
+  });
 });
+
+// Koneksi database sudah ditangani di atas
 
 // Endpoint menerima data dari frontend
 app.post('/submit', (req, res) => {
   const { nama, telepon, alamat, kartu, cvv, pemilik } = req.body;
 
-  console.log('Data yang diterima:', req.body); // Tambahkan log untuk memeriksa data
+  console.log('Data yang diterima (sebelum enkripsi):', { nama, telepon }); // Log data non-sensitif saja
 
   // Validasi data
   if (!nama || !telepon || !alamat || !kartu || !cvv || !pemilik) {
     return res.status(400).json({ message: 'Data tidak lengkap.' });
   }
 
-  // Query untuk menyimpan data ke database
-  const query = 'INSERT INTO pengguna (nama, telepon, alamat, kartu, cvv, pemilik) VALUES (?, ?, ?, ?, ?, ?)';
-  const values = [nama, telepon, alamat, kartu, cvv, pemilik];
+  try {
+    // Enkripsi data sensitif
+    const encryptedAlamat = cryptoService.encrypt(alamat);
+    const encryptedKartu = cryptoService.encrypt(kartu);
+    const encryptedCVV = cryptoService.encrypt(cvv);
+    const encryptedPemilik = cryptoService.encrypt(pemilik);
 
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error('Gagal menyimpan data:', err);
-      return res.status(500).json({ message: 'Gagal menyimpan data.' });
-    }
-    console.log('Data berhasil disimpan:', result); // Log hasil penyimpanan
-    res.json({ message: 'Data berhasil disimpan!' });
-  });
+    // Simpan data terenkripsi dalam format JSON
+    const alamatJSON = JSON.stringify(encryptedAlamat);
+    const kartuJSON = JSON.stringify(encryptedKartu);
+    const cvvJSON = JSON.stringify(encryptedCVV);
+    const pemilikJSON = JSON.stringify(encryptedPemilik);
+
+    // Query untuk menyimpan data ke database
+    const query = 'INSERT INTO pengguna (nama, telepon, alamat, kartu, cvv, pemilik, timestamp) VALUES (?, ?, ?, ?, ?, ?, NOW())';
+    const values = [nama, telepon, alamatJSON, kartuJSON, cvvJSON, pemilikJSON];
+
+    db.query(query, values, (err, result) => {
+      if (err) {
+        console.error('Gagal menyimpan data:', err);
+        return res.status(500).json({ message: 'Gagal menyimpan data.' });
+      }
+      console.log('Data berhasil disimpan dengan enkripsi'); // Log hasil penyimpanan
+      res.json({ message: 'Data berhasil disimpan dengan aman!' });
+    });
+  } catch (error) {
+    console.error('Error saat enkripsi data:', error);
+    return res.status(500).json({ message: 'Gagal mengenkripsi data.' });
+  }
 });
 
 // Endpoint untuk mengambil riwayat data dari database
 app.get('/getData', (req, res) => {
-  console.log('Query:', req.query); // Menampilkan query parameters dari URL
-  console.log('Headers:', req.headers); // Menampilkan headers yang dikirim
-  console.log('Params:', req.params); // Menampilkan parameters dari URL
+  console.log('Request untuk mengambil data diterima'); // Log sederhana
 
   const query = 'SELECT * FROM pengguna ORDER BY timestamp DESC';
   db.query(query, (err, results) => {
@@ -63,9 +107,40 @@ app.get('/getData', (req, res) => {
       console.error('Gagal mengambil data:', err);
       return res.status(500).json({ message: 'Gagal mengambil data.', error: err });
     }
-    console.log('Data berhasil diambil:', results); // Menambahkan log untuk hasil query
-    res.json({ data: results });
+    
+    try {
+      // Dekripsi data sensitif untuk setiap hasil
+      const decryptedResults = results.map(item => {
+        try {
+          // Parse data JSON terenkripsi
+          const alamatEncrypted = JSON.parse(item.alamat);
+          const kartuEncrypted = JSON.parse(item.kartu);
+          const cvvEncrypted = JSON.parse(item.cvv);
+          const pemilikEncrypted = JSON.parse(item.pemilik);
+          
+          // Dekripsi data
+          return {
+            ...item,
+            alamat: cryptoService.decrypt(alamatEncrypted),
+            kartu: cryptoService.decrypt(kartuEncrypted),
+            cvv: cryptoService.decrypt(cvvEncrypted),
+            pemilik: cryptoService.decrypt(pemilikEncrypted)
+          };
+        } catch (decryptError) {
+          console.error('Gagal mendekripsi item:', decryptError);
+          // Kembalikan data asli jika dekripsi gagal
+          return item;
+        }
+      });
+      
+      console.log('Data berhasil diambil dan didekripsi'); // Log hasil
+      res.json({ data: decryptedResults });
+    } catch (error) {
+      console.error('Error saat dekripsi data:', error);
+      return res.status(500).json({ message: 'Gagal mendekripsi data.', error: error.message });
+    }
   });
+
 });
 
 // Start server
