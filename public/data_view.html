@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tampilan Data Pengguna - ShopX</title>
+  <style>
+    /* Umum */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+
+    h1, h2 {
+      color: #4caf50;
+      font-weight: bold;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Data Pengguna */
+    #userData {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    #userData li {
+      background-color: #f9f9f9;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #userData li p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    #userData li p strong {
+      font-weight: bold;
+      display: inline-block;
+      width: 120px;
+    }
+
+    .sensitive-data {
+      font-family: monospace;
+    }
+    
+    /* Toggle Icon */
+    .toggle-visibility {
+      cursor: pointer;
+      margin-left: 5px;
+      display: inline-block;
+      vertical-align: middle;
+      opacity: 0.7;
+    }
+    
+    .toggle-visibility:hover {
+      opacity: 1;
+    }
+
+    /* Tombol Toggle */
+    #toggleMask {
+      padding: 10px 15px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    #toggleMask:hover {
+      background-color: #45a049;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .container {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Data Pengguna</h1>
+    <button id="toggleMask">Tampilkan Detail...</button>
+    <a href="index.html" style="display: block; margin-bottom: 20px; padding: 10px 15px; background-color: #2196F3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; text-decoration: none; text-align: center;">Kembali ke Beranda</a>
+    <ul id="userData"></ul>
+  </div>
+
+  <script>
+    // Fungsi untuk mengambil data pengguna dari server
+    const fetchUserData = () => {
+      // Tampilkan indikator loading
+      const userDataList = document.getElementById('userData');
+      userDataList.innerHTML = '<li>Memuat data pengguna...</li>';
+      
+      fetch('http://localhost:3000/getUserData')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Status: ${response.status} - ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Bersihkan data sebelumnya
+          userDataList.innerHTML = '';
+          
+          if (data.data && Array.isArray(data.data)) {
+            if (data.data.length === 0) {
+              userDataList.innerHTML = '<li>Tidak ada data pengguna yang ditemukan</li>';
+              return;
+            }
+            
+            // Tampilkan data pengguna
+            data.data.forEach(user => {
+              const listItem = document.createElement('li');
+              
+              try {
+                // Buat versi masked untuk kartu dan CVV
+                const maskedCard = '*'.repeat(user.kartu.length - 4) + user.kartu.slice(-4);
+                const maskedCVV = '*'.repeat(user.cvv.length);
+                const maskedAlamat = user.alamat.substring(0, 3) + '****' + user.alamat.substring(user.alamat.length - 3);
+                const maskedPemilik = user.pemilik.substring(0, 2) + '****' + user.pemilik.substring(user.pemilik.length - 2);
+                
+                listItem.innerHTML = `
+                  <p><strong>Nama:</strong> ${user.nama}</p>
+                  <p><strong>Telepon:</strong> ${user.telepon}</p>
+                  <p><strong>Alamat:</strong> <span class="sensitive-data" data-masked="${maskedAlamat}" data-clear="${user.alamat}">${maskedAlamat}</span> <span class="toggle-visibility" onclick="toggleSingleItem(this)">👁️</span></p>
+                  <p><strong>Kartu:</strong> <span class="sensitive-data" data-masked="${maskedCard}" data-clear="${user.kartu}">${maskedCard}</span> <span class="toggle-visibility" onclick="toggleSingleItem(this)">👁️</span></p>
+                  <p><strong>CVV:</strong> <span class="sensitive-data" data-masked="${maskedCVV}" data-clear="${user.cvv}">${maskedCVV}</span> <span class="toggle-visibility" onclick="toggleSingleItem(this)">👁️</span></p>
+                  <p><strong>Pemilik Kartu:</strong> <span class="sensitive-data" data-masked="${maskedPemilik}" data-clear="${user.pemilik}">${maskedPemilik}</span> <span class="toggle-visibility" onclick="toggleSingleItem(this)">👁️</span></p>
+                  <p><small>Data disimpan pada: ${new Date(user.timestamp).toLocaleString()}</small></p>
+                `;
+              } catch (err) {
+                listItem.innerHTML = `<p><strong>Error:</strong> Gagal memproses data pengguna</p>`;
+                console.error('Error memproses data pengguna:', err);
+              }
+              
+              userDataList.appendChild(listItem);
+            });
+          } else {
+            userDataList.innerHTML = '<li>Format data tidak valid</li>';
+          }
+        })
+        .catch(error => {
+          console.error('Gagal mengambil data pengguna:', error);
+          document.getElementById('userData').innerHTML = 
+            `<li>Gagal mengambil data pengguna: ${error.message || 'Koneksi ke server gagal'}. <br>Pastikan server berjalan di port 3000 dan database terkonfigurasi dengan benar.</li>`;
+        });
+    };
+
+    // Fungsi untuk toggle antara masked dan cleartext untuk semua data
+    const toggleMaskedData = () => {
+      const toggleButton = document.getElementById('toggleMask');
+      const sensitiveElements = document.querySelectorAll('.sensitive-data');
+      
+      // Periksa status saat ini (masked atau clear)
+      const isMasked = sensitiveElements[0].textContent === sensitiveElements[0].getAttribute('data-masked');
+      
+      // Toggle antara masked dan clear
+      sensitiveElements.forEach(element => {
+        if (isMasked) {
+          // Ganti ke clear text
+          element.textContent = element.getAttribute('data-clear');
+        } else {
+          // Ganti ke masked text
+          element.textContent = element.getAttribute('data-masked');
+        }
+      });
+      
+      // Update label tombol
+      toggleButton.textContent = isMasked ? 'Sembunyikan Detail...' : 'Tampilkan Detail...';
+    };
+    
+    // Fungsi untuk toggle satu item data sensitif
+    const toggleSingleItem = (toggleIcon) => {
+      // Ambil elemen data sensitif yang berada sebelum ikon toggle
+      const sensitiveElement = toggleIcon.previousElementSibling;
+      
+      // Periksa status saat ini (masked atau clear)
+      const isMasked = sensitiveElement.textContent === sensitiveElement.getAttribute('data-masked');
+      
+      // Toggle antara masked dan clear untuk elemen ini saja
+      if (isMasked) {
+        // Ganti ke clear text
+        sensitiveElement.textContent = sensitiveElement.getAttribute('data-clear');
+        toggleIcon.textContent = '🔒'; // Ganti ikon menjadi kunci terkunci
+      } else {
+        // Ganti ke masked text
+        sensitiveElement.textContent = sensitiveElement.getAttribute('data-masked');
+        toggleIcon.textContent = '👁️'; // Ganti ikon menjadi mata
+      }
+    };
+
+    // Event listener untuk tombol toggle
+    document.getElementById('toggleMask').addEventListener('click', toggleMaskedData);
+
+    // Muat data saat halaman dimuat
+    window.onload = fetchUserData;
+  </script>
+</body>
+</html>
