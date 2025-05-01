@@ -30,6 +30,8 @@ db.connect((err) => {
 app.post('/submit', (req, res) => {
   const { nama, telepon, alamat, kartu, cvv, pemilik } = req.body;
 
+  console.log('Data yang diterima:', req.body); // Tambahkan log untuk memeriksa data
+
   // Validasi data
   if (!nama || !telepon || !alamat || !kartu || !cvv || !pemilik) {
     return res.status(400).json({ message: 'Data tidak lengkap.' });
@@ -44,19 +46,24 @@ app.post('/submit', (req, res) => {
       console.error('Gagal menyimpan data:', err);
       return res.status(500).json({ message: 'Gagal menyimpan data.' });
     }
-    console.log('Data berhasil disimpan:', result);
+    console.log('Data berhasil disimpan:', result); // Log hasil penyimpanan
     res.json({ message: 'Data berhasil disimpan!' });
   });
 });
 
 // Endpoint untuk mengambil riwayat data dari database
 app.get('/getData', (req, res) => {
-  const query = 'SELECT * FROM pengguna ORDER BY timestamp DESC'; // Menampilkan data berdasarkan waktu terakhir
+  console.log('Query:', req.query); // Menampilkan query parameters dari URL
+  console.log('Headers:', req.headers); // Menampilkan headers yang dikirim
+  console.log('Params:', req.params); // Menampilkan parameters dari URL
+
+  const query = 'SELECT * FROM pengguna ORDER BY timestamp DESC';
   db.query(query, (err, results) => {
     if (err) {
       console.error('Gagal mengambil data:', err);
-      return res.status(500).json({ message: 'Gagal mengambil data.' });
+      return res.status(500).json({ message: 'Gagal mengambil data.', error: err });
     }
+    console.log('Data berhasil diambil:', results); // Menambahkan log untuk hasil query
     res.json({ data: results });
   });
 });

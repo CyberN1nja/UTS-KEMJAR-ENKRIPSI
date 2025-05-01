@@ -5,19 +5,32 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "build:css": "tailwindcss -i ./input.css -o ./output.css --watch"
+    "build:css": "tailwindcss -i ./input.css -o ./output.css --watch",
+    "dev": "nodemon server.js",
+    "lint": "eslint ."
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "backend",
+    "node",
+    "express",
+    "tailwindcss"
+  ],
+  "author": "Rangga",
   "license": "ISC",
+  "description": "A project using Node.js, Express, MySQL2, and TailwindCSS for building a backend server.",
   "dependencies": {
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "mysql2": "^3.14.1"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.37.0",
+    "nodemon": "^2.0.20",
+    "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4"
-  },
-  "description": ""
+  }
 }
