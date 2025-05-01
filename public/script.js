@@ -11,12 +11,18 @@ const getHistory = () => {
         // Menambahkan data baru ke dalam list
         data.data.forEach((item) => {
           const listItem = document.createElement('li');
+          
+          // Menampilkan data kartu kredit dengan format yang aman (hanya 4 digit terakhir)
+          const maskedCard = item.kartu.replace(/\d(?=\d{4})/g, '*');
+          // Menampilkan CVV dengan format yang aman (semua digit disembunyikan)
+          const maskedCVV = '*'.repeat(item.cvv.length);
+          
           listItem.innerHTML = `
             <p><strong>Nama:</strong> ${item.nama}</p>
             <p><strong>Telepon:</strong> ${item.telepon}</p>
             <p><strong>Alamat:</strong> ${item.alamat}</p>
-            <p><strong>Kartu:</strong> ${item.kartu}</p>
-            <p><strong>CVV:</strong> ${item.cvv}</p>
+            <p><strong>Kartu:</strong> ${maskedCard}</p>
+            <p><strong>CVV:</strong> ${maskedCVV}</p>
             <p><strong>Pemilik Kartu:</strong> ${item.pemilik}</p>
             <p><small>Data disimpan pada: ${new Date(item.timestamp).toLocaleString()}</small></p>
           `;
